@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   fetchReceptoryRecords,
   searchReceptoryRecords,
-} from "../features/receptory/receptorythunks";
+} from "../features/receptory/receptoryThunks";
 import ReceptoryRecordsForm from "../components/receptory/ReceptoryRecordsForm";
 import ReceptoryRecordsTable from "../components/receptory/ReceptoryRecordsTable";
 import SearchBox from "../components/homepage/SearchBox";
