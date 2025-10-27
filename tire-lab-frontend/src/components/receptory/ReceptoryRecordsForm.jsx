@@ -4,7 +4,7 @@ import {
   addReceptoryRecord,
   updateReceptoryRecord,
   fetchReceptoryRecords,
-} from "../../features/receptory/receptorythunks";
+} from "../../features/receptory/receptoryThunks";
 import { clearSelectedReceptoryRecord } from "../../features/receptory/receptorySlice";
 import { standardsList } from "../../data/standard";
 import { testsList } from "../../data/test";

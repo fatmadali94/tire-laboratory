@@ -4,7 +4,7 @@ import {
   // deleteReceptoryRecord,
   fetchReceptoryRecords,
   fetchAvailableEntries,
-} from "../../features/receptory/receptorythunks";
+} from "../../features/receptory/receptoryThunks";
 import {
   clearSelectedReceptoryRecord,
   setSelectedReceptoryRecord,
