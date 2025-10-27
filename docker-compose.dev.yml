@@ -1,0 +1,62 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: lab-postgres-dev
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-radikal4}
+      POSTGRES_DB: ${DB_NAME:-tire_laboratory}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    networks:
+      - lab-network
+
+  backend:
+    build:
+      context: ./tire-lab-backend
+      target: development
+    container_name: lab-backend-dev
+    environment:
+      NODE_ENV: development
+      PORT: 5050
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-radikal4}@postgres:5432/${DB_NAME:-tire_laboratory}
+      CORS_ORIGIN: http://localhost:5173
+    ports:
+      - "5050:5050"
+    volumes:
+      - ./tire-lab-backend:/app
+      - /app/node_modules
+    depends_on:
+      - postgres
+    networks:
+      - lab-network
+    command: npm run dev
+
+  frontend:
+    build:
+      context: ./tire-lab-frontend
+      target: development
+    container_name: lab-frontend-dev
+    environment:
+      VITE_API_URL: http://localhost:5050
+      VITE_ENV: development
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./tire-lab-frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - lab-network
+
+volumes:
+  postgres_dev_data:
+
+networks:
+  lab-network:
+    driver: bridge

@@ -1,0 +1,53 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: lab-postgres-prod
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    networks:
+      - lab-network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./tire-lab-backend
+      target: production
+    container_name: lab-backend-prod
+    environment:
+      NODE_ENV: production
+      PORT: 5050
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+    ports:
+      - "5050:5050"
+    depends_on:
+      - postgres
+    networks:
+      - lab-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./tire-lab-frontend
+      target: production
+    container_name: lab-frontend-prod
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - lab-network
+    restart: unless-stopped
+
+volumes:
+  postgres_prod_data:
+
+networks:
+  lab-network:
+    driver: bridge
