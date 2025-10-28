@@ -28,6 +28,15 @@ if (process.env.NODE_ENV === 'production') {
 
 const app = express();
 
+// Simple test route
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'Test route works!', timestamp: new Date() });
+});
+
+app.get('/test', (req, res) => {
+  res.json({ message: 'Root test works!' });
+});
+
 app.use(cors({
   origin: [
     'https://tire.rierco.net',
