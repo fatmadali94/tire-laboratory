@@ -31,7 +31,9 @@ const app = express();
 app.use(cors({
   origin: [
     'https://tire.rierco.net',
-    'http://localhost:5173'
+    'http://localhost:5173',
+    'http://localhost:8080', 
+    'http://194.180.11.232:8080'
   ],
 
   credentials: true   

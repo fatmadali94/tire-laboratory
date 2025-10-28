@@ -6,7 +6,7 @@ import {
   // deleteReceptoryRecord,
   searchReceptoryRecords,
   fetchAvailableEntries,
-} from "./receptorythunks";
+} from "./receptoryThunks";
 
 const initialState = {
   receptoryRecords: [],
