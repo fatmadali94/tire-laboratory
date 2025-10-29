@@ -1,7 +1,11 @@
+# Backup the current one
+cp ./tire-lab-frontend/Dockerfile ./tire-lab-frontend/Dockerfile.backup
+
+# Create fresh one
+cat > ./tire-lab-frontend/Dockerfile << 'EOF'
 # Development stage - Use Debian instead of Alpine
 FROM node:18 AS development
 WORKDIR /app
-
 COPY package*.json ./
 RUN npm install
 COPY . .
@@ -11,7 +15,6 @@ CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 # Build stage - Use Debian-based image
 FROM node:18 AS build
 WORKDIR /app
-
 COPY package*.json ./
 RUN npm ci --only=production --ignore-scripts
 RUN npm install
@@ -24,3 +27,4 @@ COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
+EOF
