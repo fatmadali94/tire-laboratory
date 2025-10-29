@@ -233,7 +233,151 @@ export async function updateLaboratoryRecordByEntryCode(entry_code, data) {
 
 // models/laboratoryModel.js
 
+// ...existing code...
 export async function searchLaboratoryRecordsByPartialCode(partialCode) {
+  const trimmed = (partialCode || "").toString().trim();
+
+  if (!trimmed) {
+    const result = await pool.query(`
+      SELECT
+        dr.*,
+        ne.size,
+        ne.brand,
+        ne.country,
+        ne.seal_number,
+        ne.description,
+        ne.entry_category,
+        ne.number_of_rings,
+        ne.production_week_year,
+        ne.company_entry_date,
+        rr.customers,
+        rr.standard,
+        rr.tests,
+        rr.receptory_confirmation,
+        u.name AS created_by_name,
+        u.image AS created_by_image
+      FROM laboratory_records dr
+      JOIN new_entry ne ON dr.entry_code = ne.entry_code
+      LEFT JOIN receptory_records rr ON dr.entry_code = rr.entry_code
+      LEFT JOIN users u ON ne.created_by = u.id
+      WHERE dr.entry_code ~ '^\\d+\\-\\d+$'
+      ORDER BY
+        CAST(SPLIT_PART(dr.entry_code, '-', 1) AS INTEGER) DESC,
+        CAST(SPLIT_PART(dr.entry_code, '-', 2) AS INTEGER) DESC
+      LIMIT 20
+    `);
+    return result.rows;
+  }
+
+  // numeric-only -> treat as suffix start across all prefixes
+  if (/^\d+$/.test(trimmed)) {
+    const num = parseInt(trimmed, 10);
+    const result = await pool.query(`
+      SELECT
+        dr.*,
+        ne.size,
+        ne.brand,
+        ne.country,
+        ne.seal_number,
+        ne.description,
+        ne.entry_category,
+        ne.number_of_rings,
+        ne.production_week_year,
+        ne.company_entry_date,
+        rr.customers,
+        rr.standard,
+        rr.tests,
+        rr.receptory_confirmation,
+        u.name AS created_by_name,
+        u.image AS created_by_image,
+        CAST(SPLIT_PART(dr.entry_code, '-', 2) AS INTEGER) AS suffix_num,
+        CAST(SPLIT_PART(dr.entry_code, '-', 1) AS INTEGER) AS prefix_num
+      FROM laboratory_records dr
+      JOIN new_entry ne ON dr.entry_code = ne.entry_code
+      LEFT JOIN receptory_records rr ON dr.entry_code = rr.entry_code
+      LEFT JOIN users u ON ne.created_by = u.id
+      WHERE dr.entry_code ~ '^\\d+-\\d+$'
+        AND CAST(SPLIT_PART(dr.entry_code, '-', 2) AS INTEGER) >= $1
+      ORDER BY prefix_num DESC, suffix_num ASC
+      LIMIT 20
+    `, [num]);
+    return result.rows;
+  }
+
+  // prefix[-][suffix?] like "1404-" or "1404-2"
+  const psMatch = /^(\d+)-(\d*)$/.exec(trimmed);
+  if (psMatch) {
+    const prefix = parseInt(psMatch[1], 10);
+    const suffixPart = psMatch[2];
+
+    if (suffixPart === "") {
+      const result = await pool.query(`
+        SELECT
+          dr.*,
+          ne.size,
+          ne.brand,
+          ne.country,
+          ne.seal_number,
+          ne.description,
+          ne.entry_category,
+          ne.number_of_rings,
+          ne.production_week_year,
+          ne.company_entry_date,
+          rr.customers,
+          rr.standard,
+          rr.tests,
+          rr.receptory_confirmation,
+          u.name AS created_by_name,
+          u.image AS created_by_image,
+          CAST(SPLIT_PART(dr.entry_code, '-', 2) AS INTEGER) AS suffix_num
+        FROM laboratory_records dr
+        JOIN new_entry ne ON dr.entry_code = ne.entry_code
+        LEFT JOIN receptory_records rr ON dr.entry_code = rr.entry_code
+        LEFT JOIN users u ON ne.created_by = u.id
+        WHERE dr.entry_code ~ '^\\d+-\\d+$'
+          AND CAST(SPLIT_PART(dr.entry_code, '-', 1) AS INTEGER) = $1
+        ORDER BY suffix_num ASC
+        LIMIT 20
+      `, [prefix]);
+      return result.rows;
+    }
+
+    if (/^\d+$/.test(suffixPart)) {
+      const suffix = parseInt(suffixPart, 10);
+      const result = await pool.query(`
+        SELECT
+          dr.*,
+          ne.size,
+          ne.brand,
+          ne.country,
+          ne.seal_number,
+          ne.description,
+          ne.entry_category,
+          ne.number_of_rings,
+          ne.production_week_year,
+          ne.company_entry_date,
+          rr.customers,
+          rr.standard,
+          rr.tests,
+          rr.receptory_confirmation,
+          u.name AS created_by_name,
+          u.image AS created_by_image,
+          CAST(SPLIT_PART(dr.entry_code, '-', 2) AS INTEGER) AS suffix_num
+        FROM laboratory_records dr
+        JOIN new_entry ne ON dr.entry_code = ne.entry_code
+        LEFT JOIN receptory_records rr ON dr.entry_code = rr.entry_code
+        LEFT JOIN users u ON ne.created_by = u.id
+        WHERE dr.entry_code ~ '^\\d+-\\d+$'
+          AND CAST(SPLIT_PART(dr.entry_code, '-', 1) AS INTEGER) = $1
+          AND CAST(SPLIT_PART(dr.entry_code, '-', 2) AS INTEGER) >= $2
+        ORDER BY suffix_num ASC
+        LIMIT 20
+      `, [prefix, suffix]);
+      return result.rows;
+    }
+  }
+
+  // fallback: text partial match
   const result = await pool.query(`
     SELECT
       dr.*,
@@ -246,16 +390,20 @@ export async function searchLaboratoryRecordsByPartialCode(partialCode) {
       ne.number_of_rings,
       ne.production_week_year,
       ne.company_entry_date,
+      rr.customers,
+      rr.standard,
+      rr.tests,
+      rr.receptory_confirmation,
       u.name AS created_by_name,
       u.image AS created_by_image
     FROM laboratory_records dr
     JOIN new_entry ne ON dr.entry_code = ne.entry_code
+    LEFT JOIN receptory_records rr ON dr.entry_code = rr.entry_code
     LEFT JOIN users u ON ne.created_by = u.id
     WHERE dr.entry_code::text ILIKE $1
-    ORDER BY dr.entry_code DESC
     LIMIT 20
-  `, [`%${partialCode}%`]);
+  `, [`%${trimmed}%`]);
 
   return result.rows;
 }
-
+// ...existing code...

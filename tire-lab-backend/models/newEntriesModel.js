@@ -147,6 +147,88 @@ export async function updateNewEntry(entry_code, newEntriesData) {
 }
 
 export async function searchNewEntriesByPartialCode(partialCode) {
+  const trimmed = (partialCode || "").toString().trim();
+
+  if (!trimmed) {
+    const result = await pool.query(`
+      SELECT 
+        ne.*,
+        u.name AS created_by_name,
+        u.image AS created_by_image
+      FROM new_entry ne
+      LEFT JOIN users u ON ne.created_by = u.id
+      WHERE ne.entry_code::text ILIKE $1
+      LIMIT 20
+    `, ['%']);
+    return result.rows;
+  }
+
+  // Case: only digits (search suffix across all prefixes)
+  if (/^\d+$/.test(trimmed)) {
+    const num = parseInt(trimmed, 10);
+    const result = await pool.query(`
+      SELECT 
+        ne.*,
+        u.name AS created_by_name,
+        u.image AS created_by_image,
+        CAST(SPLIT_PART(ne.entry_code, '-', 2) AS INTEGER) AS suffix_num,
+        CAST(SPLIT_PART(ne.entry_code, '-', 1) AS INTEGER) AS prefix_num
+      FROM new_entry ne
+      LEFT JOIN users u ON ne.created_by = u.id
+      WHERE ne.entry_code ~ '^\\d+-\\d+$'
+        AND CAST(SPLIT_PART(ne.entry_code, '-', 2) AS INTEGER) >= $1
+      ORDER BY prefix_num DESC, suffix_num ASC
+      LIMIT 20
+    `, [num]);
+    return result.rows;
+  }
+
+  // Case: prefix[-][suffix?], e.g. "1404-" or "1404-2"
+  const psMatch = /^(\d+)-(\d*)$/.exec(trimmed);
+  if (psMatch) {
+    const prefix = parseInt(psMatch[1], 10);
+    const suffixPart = psMatch[2];
+
+    if (suffixPart === "") {
+      // "1404-" -> first 20 entries for that prefix ordered by suffix ascending
+      const result = await pool.query(`
+        SELECT 
+          ne.*,
+          u.name AS created_by_name,
+          u.image AS created_by_image,
+          CAST(SPLIT_PART(ne.entry_code, '-', 2) AS INTEGER) AS suffix_num
+        FROM new_entry ne
+        LEFT JOIN users u ON ne.created_by = u.id
+        WHERE ne.entry_code ~ '^\\d+-\\d+$'
+          AND CAST(SPLIT_PART(ne.entry_code, '-', 1) AS INTEGER) = $1
+        ORDER BY suffix_num ASC
+        LIMIT 20
+      `, [prefix]);
+      return result.rows;
+    }
+
+    // "1404-2" -> entries with that prefix and suffix >= given suffix
+    if (/^\d+$/.test(suffixPart)) {
+      const suffix = parseInt(suffixPart, 10);
+      const result = await pool.query(`
+        SELECT 
+          ne.*,
+          u.name AS created_by_name,
+          u.image AS created_by_image,
+          CAST(SPLIT_PART(ne.entry_code, '-', 2) AS INTEGER) AS suffix_num
+        FROM new_entry ne
+        LEFT JOIN users u ON ne.created_by = u.id
+        WHERE ne.entry_code ~ '^\\d+-\\d+$'
+          AND CAST(SPLIT_PART(ne.entry_code, '-', 1) AS INTEGER) = $1
+          AND CAST(SPLIT_PART(ne.entry_code, '-', 2) AS INTEGER) >= $2
+        ORDER BY suffix_num ASC
+        LIMIT 20
+      `, [prefix, suffix]);
+      return result.rows;
+    }
+  }
+
+  // Fallback: text partial match
   const result = await pool.query(`
     SELECT 
       ne.*,
@@ -156,6 +238,7 @@ export async function searchNewEntriesByPartialCode(partialCode) {
     LEFT JOIN users u ON ne.created_by = u.id
     WHERE ne.entry_code::text ILIKE $1
     LIMIT 20
-  `, [`%${partialCode}%`]);
+  `, [`%${trimmed}%`]);
+
   return result.rows;
 }

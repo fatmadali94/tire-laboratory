@@ -64,69 +64,6 @@ app.use('/api/sizes', sizesRoutes);
 app.use('/api/customers', customersRoutes);
 app.use('/api/retrievalForm', retrievalFormRoutes);
 
-console.log('Loading routes...');
-
-try {
-  console.log('✓ Loading auth routes');
-  app.use('/api/auth', authRoutes);
-} catch (e) { console.error('✗ Error loading auth routes:', e.message); }
-
-try {
-  console.log('✓ Loading users routes');
-  app.use('/api/users', userRoutes);
-} catch (e) { console.error('✗ Error loading users routes:', e.message); }
-
-try {
-  console.log('✓ Loading depositoryRecords routes');
-  app.use('/api/depositoryRecords', depositoryRecordsRoutes);
-} catch (e) { console.error('✗ Error loading depositoryRecords routes:', e.message); }
-
-try {
-  console.log('✓ Loading receptoryRecords routes');
-  app.use('/api/receptoryRecords', receptoryRecordsRoutes);
-} catch (e) { console.error('✗ Error loading receptoryRecords routes:', e.message); }
-
-try {
-  console.log('✓ Loading laboratoryRecords routes');
-  app.use('/api/laboratoryRecords', laboratoryRecordsRoutes);
-} catch (e) { console.error('✗ Error loading laboratoryRecords routes:', e.message); }
-
-try {
-  console.log('✓ Loading newEntries routes');
-  app.use('/api/newEntries', newEntriesRoutes);
-} catch (e) { console.error('✗ Error loading newEntries routes:', e.message); }
-
-try {
-  console.log('✓ Loading dashboard routes');
-  app.use('/api/dashboard', dashboardRoutes);
-} catch (e) { console.error('✗ Error loading dashboard routes:', e.message); }
-
-try {
-  console.log('✓ Loading countries routes');
-  app.use('/api/countries', countriesRoutes);
-} catch (e) { console.error('✗ Error loading countries routes:', e.message); }
-
-try {
-  console.log('✓ Loading brands routes');
-  app.use('/api/brands', brandsRoutes);
-} catch (e) { console.error('✗ Error loading brands routes:', e.message); }
-
-try {
-  console.log('✓ Loading sizes routes');
-  app.use('/api/sizes', sizesRoutes);
-} catch (e) { console.error('✗ Error loading sizes routes:', e.message); }
-
-try {
-  console.log('✓ Loading customers routes');
-  app.use('/api/customers', customersRoutes);
-} catch (e) { console.error('✗ Error loading customers routes:', e.message); }
-
-try {
-  console.log('✓ Loading retrievalForm routes');
-  app.use('/api/retrievalForm', retrievalFormRoutes);
-} catch (e) { console.error('✗ Error loading retrievalForm routes:', e.message); }
-
-console.log('All routes loaded!');
 
 const PORT = process.env.PORT || 5050;
 app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));

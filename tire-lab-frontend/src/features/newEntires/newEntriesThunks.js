@@ -15,15 +15,21 @@ export const searchNewEntries = createAsyncThunk(
   "newEntries/searchNewEntries",
   async (searchQuery) => {
     if (!searchQuery.trim()) {
-      // If empty search, return all entries (or you could return empty array)
       const res = await axios.get(BASE_URL);
-      return res.data.sort((a, b) => b.entry_code - a.entry_code).slice(0, 20);
+      return res.data
+        .sort((a, b) => {
+          const numA = parseInt(a.entry_code.split('-')[1], 10);
+          const numB = parseInt(b.entry_code.split('-')[1], 10);
+          return numB - numA;
+        })
+        .slice(0, 20);
     }
 
+    // Let the backend handle sorting via ORDER BY
     const res = await axios.get(
       `${BASE_URL}/search?q=${encodeURIComponent(searchQuery)}`
     );
-    return res.data;
+    return res.data; // Already sorted by the backend
   }
 );
 

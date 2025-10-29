@@ -24,11 +24,11 @@ export const searchDepositoryRecords = createAsyncThunk(
       const res = await axios.get(BASE_URL);
       return res.data.slice(0, 20);
     }
-
+    
     const res = await axios.get(
       `${BASE_URL}/search?q=${encodeURIComponent(searchQuery)}`
     );
-    return res.data;
+    return res.data; // Already sorted by backend
   }
 );
 

@@ -25,6 +25,11 @@ services:
       PORT: 5050
       DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-radikal4}@postgres:5432/${DB_NAME:-tire_laboratory}
       CORS_ORIGIN: http://localhost:5173
+      # enable polling so file changes on Windows/Bind mounts are noticed
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+      # Optional: speed up polling interval
+      CHOKIDAR_INTERVAL: "1000"
     ports:
       - "5050:5050"
     volumes:
@@ -42,8 +47,13 @@ services:
       target: development
     container_name: lab-frontend-dev
     environment:
-      VITE_API_URL: http://localhost:5050
+      # point at backend container (inside compose network)
+      VITE_API_URL: http://backend:5050
       VITE_ENV: development
+      # enable polling for Vite/React edits on Windows
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_INTERVAL: "1000"
     ports:
       - "5173:5173"
     volumes:
@@ -53,6 +63,7 @@ services:
       - backend
     networks:
       - lab-network
+    command: npm run dev
 
 volumes:
   postgres_dev_data:
