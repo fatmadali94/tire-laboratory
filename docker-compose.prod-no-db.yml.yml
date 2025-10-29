@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ./tire-lab-backend
+      target: production
+    container_name: lab-backend-prod
+    network_mode: "host"
+    environment:
+      NODE_ENV: production
+      PORT: 5050
+      PGHOST: localhost
+      PGUSER: tireLab
+      PGPASSWORD: radikal4
+      PGDATABASE: tire_laboratory
+      PGPORT: 5432
+      JWT_SECRET: my_super_secret_key
+      CLOUDINARY_CLOUD_NAME: dflapbzi9
+      CLOUDINARY_API_KEY: 758797596463665
+      CLOUDINARY_API_SECRET: G1IeZ57LERrszCkgJ-u2w8WTdI8
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./tire-lab-frontend
+      target: production
+    container_name: lab-frontend-prod
+    network_mode: "host"
+    restart: unless-stopped
