@@ -4,6 +4,7 @@ import {
   // deleteDepositoryRecord,
   fetchDepositoryRecords,
   fetchAvailableEntries,
+  updateDepositoryRecord
 } from "../../features/depository/depositorythunks";
 import {
   clearSelectedDepositoryRecord,
@@ -11,6 +12,7 @@ import {
   clearError,
 } from "../../features/depository/depositorySlice";
 import { convertGregorianToJalali } from "../../utils/dateHelpers";
+import BulkEditForm from "./BulkEditForm";
 
 const DepositoryRecordsTable = ({ onEdit }) => {
   const dispatch = useDispatch();
@@ -24,6 +26,8 @@ const DepositoryRecordsTable = ({ onEdit }) => {
   } = useSelector((state) => state.depositoryRecords);
 
   const [highlightedEntryCode, setHighlightedEntryCode] = useState(null);
+  const [selectedEntries, setSelectedEntries] = useState([]);
+  const [isBulkEditFormOpen, setBulkEditFormOpen] = useState(false);
 
   useEffect(() => {
     dispatch(fetchDepositoryRecords());
@@ -52,6 +56,43 @@ const DepositoryRecordsTable = ({ onEdit }) => {
     } else {
       setConfirmed(false);
     }
+  };
+
+  const handleCheckboxChange = (entryCode) => {
+    setSelectedEntries((prev) => {
+      if (prev.includes(entryCode)) {
+        return prev.filter((code) => code !== entryCode);
+      } else {
+        return [...prev, entryCode];
+      }
+    });
+  };
+
+  const openBulkEditForm = () => {
+    setBulkEditFormOpen(true);
+  };
+
+  const handleBulkEditSubmit = ({ entryCodes, depositoryRecord }) => {
+    // Create a promise array to track all updates
+    const updatePromises = entryCodes.map(entry_code => 
+      dispatch(updateDepositoryRecord({ entry_code, depositoryRecord }))
+    );
+
+    // Wait for all updates to complete
+    Promise.all(updatePromises)
+      .then(() => {
+        // After all updates succeed:
+        dispatch(fetchDepositoryRecords()); // Refresh the list
+        setSelectedEntries([]); // Clear selection
+        setBulkEditFormOpen(false); // Close modal
+        onEdit(null); // Close the single record form
+        dispatch(clearSelectedDepositoryRecord()); // Clear selected record from Redux
+      })
+      .catch(error => {
+        // If any update fails, show error and leave form open
+        console.error("Error during bulk update:", error);
+        // TODO: Show error toast/notification
+      });
   };
 
   const getGradientRowColor = (index, total) => {
@@ -105,11 +146,23 @@ const DepositoryRecordsTable = ({ onEdit }) => {
             در حال بروزرسانی...
           </div>
         )}
+        <button
+          onClick={openBulkEditForm}
+          disabled={selectedEntries.length === 0}
+          className={`mb-4 px-4 py-2 rounded text-white ${
+            selectedEntries.length === 0
+              ? 'bg-gray-600 cursor-not-allowed'
+              : 'bg-red-800 hover:bg-red-900'
+          }`}
+        >
+          ویرایش گروهی ({selectedEntries.length} مورد انتخاب شده)
+        </button>
         <div className="scroll-wrapper relative mt-5">
           <div className="scroll-top overflow-x-auto custom-scrollbar">
             <table className="min-w-[1000px] table-auto text-gray-400 border-separate space-y-6 text-sm w-full">
               <thead className="bg-gray-800 text-gray-500">
                 <tr>
+                  <th className="p-3 text-center">انتخاب</th>
                   <th className="p-3 text-center">کنش</th>
                   <th className="p-3 text-center">کد ردیابی</th>
                   <th className="p-3 text-center">تاریخ ورود به شرکت</th>
@@ -179,6 +232,14 @@ const DepositoryRecordsTable = ({ onEdit }) => {
                       }
                     }}
                   >
+                    <td className="p-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedEntries.includes(depositoryRecord.entry_code)}
+                        onChange={() => handleCheckboxChange(depositoryRecord.entry_code)}
+                        className="w-4 h-4 text-red-600 bg-gray-700 border-gray-600 rounded focus:ring-red-600 focus:ring-2"
+                      />
+                    </td>
                     {/* Confirmation status indicator */}
                     <td className="relative p-3 flex flex-col">
                       {/* Confirmation status indicator — wrapped inside TD */}
@@ -193,7 +254,7 @@ const DepositoryRecordsTable = ({ onEdit }) => {
                       )}
 
                       <button
-                        className="px-2 mb-1 sm:px-1 py-2.5 sm:py-3 border border-[#5271ff]/20 rounded-lg text-neutral-400 hover:text-white hover:border-[#5271ff] hover:shadow-[0_0_15px_rgba(82,113,255,0.3)] bg-blue-800 hover:bg-blue-900 edit transition-all duration-300 text-center text-sm sm:text-base"
+                        className="px-2 mb-1 sm:px-1 py-2.5 sm:py-3 border border-[#5271ff]/20 rounded-lg text-neutral-400 hover:text-white hover:border-[#6d1c1c] hover:shadow-[0_0_15px_rgba(82,113,255,0.3)] bg-red-800 hover:bg-red-900 edit transition-all duration-300 text-center text-sm sm:text-base"
                         onClick={() => onEdit(depositoryRecord)}
                         disabled={loading}
                       >
@@ -310,6 +371,13 @@ const DepositoryRecordsTable = ({ onEdit }) => {
             </table>
           </div>
         </div>
+        {isBulkEditFormOpen && (
+          <BulkEditForm
+            selectedEntries={selectedEntries}
+            onSubmit={handleBulkEditSubmit}
+            onClose={() => setBulkEditFormOpen(false)}
+          />
+        )}
       </div>
     </div>
   );

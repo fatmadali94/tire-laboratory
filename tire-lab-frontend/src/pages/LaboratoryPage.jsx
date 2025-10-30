@@ -68,7 +68,7 @@ const LaboratoryPage = () => {
         />
 
         {/* ✅ Show form only when a record is selected */}
-        {selected && <LaboratoryRecordsForm onCancel={handleCancel} />}
+  {selected && <LaboratoryRecordsForm onClose={handleCancel} />}
 
         <LaboratoryRecordsTable onEdit={handleEdit} />
       </div>

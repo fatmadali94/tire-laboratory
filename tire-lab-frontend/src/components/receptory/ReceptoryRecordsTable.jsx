@@ -4,6 +4,7 @@ import {
   // deleteReceptoryRecord,
   fetchReceptoryRecords,
   fetchAvailableEntries,
+  updateReceptoryRecord,
 } from "../../features/receptory/receptoryThunks";
 import {
   clearSelectedReceptoryRecord,
@@ -11,6 +12,7 @@ import {
   clearError,
 } from "../../features/receptory/receptorySlice";
 import { convertGregorianToJalali } from "../../utils/dateHelpers";
+import BulkEditForm from "./BulkEditForm";
 
 const ReceptoryRecordsTable = ({ onEdit }) => {
   const dispatch = useDispatch();
@@ -24,6 +26,8 @@ const ReceptoryRecordsTable = ({ onEdit }) => {
   } = useSelector((state) => state.receptoryRecords);
 
   const [highlightedEntryCode, setHighlightedEntryCode] = useState(null);
+  const [selectedEntries, setSelectedEntries] = useState([]);
+  const [isBulkEditFormOpen, setBulkEditFormOpen] = useState(false);
 
   useEffect(() => {
     dispatch(fetchReceptoryRecords());
@@ -47,6 +51,53 @@ const ReceptoryRecordsTable = ({ onEdit }) => {
   const handleEdit = (receptoryRecord) => {
     dispatch(clearSelectedReceptoryRecord());
     dispatch(setSelectedReceptoryRecord(receptoryRecord));
+  };
+
+  const handleCheckboxChange = (entryCode) => {
+    setSelectedEntries((prev) => {
+      if (prev.includes(entryCode)) {
+        const next = prev.filter((code) => code !== entryCode);
+        // If nothing is selected anymore, close bulk form
+        if (next.length === 0) setBulkEditFormOpen(false);
+        return next;
+      } else {
+        const next = [...prev, entryCode];
+        return next;
+      }
+    });
+  };
+
+  const openBulkEditForm = () => {
+    setBulkEditFormOpen(true);
+  };
+
+  const handleBulkEditSubmit = ({ customers, standard, tests, receptory_confirmation }) => {
+    const cleanedFormData = {
+      customers,
+      standard,
+      tests,
+      receptory_confirmation,
+    };
+
+    const updatePromises = selectedEntries.map((entry_code) =>
+      dispatch(updateReceptoryRecord({ entry_code, receptoryRecord: cleanedFormData }))
+    );
+
+    Promise.all(updatePromises)
+      .then(() => {
+        dispatch(fetchReceptoryRecords());
+        setSelectedEntries([]);
+        setBulkEditFormOpen(false); // Fixed the state setter name
+        // close any open single edit form
+        onEdit(null);
+        dispatch(clearSelectedReceptoryRecord());
+      })
+      .catch((error) => {
+        console.error("Error during bulk update:", error);
+        // Close forms even on error
+        setBulkEditFormOpen(false);
+        setSelectedEntries([]);
+      });
   };
 
   const getGradientRowColor = (index, total) => {
@@ -130,12 +181,39 @@ const ReceptoryRecordsTable = ({ onEdit }) => {
             در حال بروزرسانی...
           </div>
         )}
+        <div className="flex justify-between items-center mb-2">
+          <button
+            onClick={openBulkEditForm}
+            disabled={selectedEntries.length === 0}
+            className={`mb-4 px-4 py-2 rounded text-white ${
+              selectedEntries.length === 0
+                ? 'bg-gray-600 cursor-not-allowed'
+                : 'bg-red-800 hover:bg-red-900'
+            }`}
+          >
+            ویرایش گروهی ({selectedEntries.length} مورد انتخاب شده)
+          </button>
+        </div>
+        {/* Fixed position modal */}
+        {isBulkEditFormOpen && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+            <div className="bg-neutral-900 p-6 rounded-md shadow-md w-auto max-w-[90vw] max-h-[90vh] overflow-auto">
+              <BulkEditForm
+                selectedEntries={selectedEntries}
+                onSubmit={handleBulkEditSubmit}
+                onClose={() => setBulkEditFormOpen(false)}
+              />
+            </div>
+          </div>
+        )}
+
         <div className="scroll-wrapper relative mt-5">
           <div className="scroll-top overflow-x-auto custom-scrollbar">
             <table className="min-w-[1000px] table-auto text-gray-400 border-separate space-y-6 text-sm w-full">
               <thead className="bg-gray-800 text-gray-500">
-                <tr>
-                  <th className="p-3 text-center">کنش</th>
+        <tr>
+          <th className="p-3 text-center">انتخاب</th>
+          <th className="p-3 text-center">کنش</th>
                   <th className="p-3 text-center">کد ردیابی</th>
                   <th className="p-3 text-center">تاریخ ورود به شرکت</th>
                   <th className="p-3 text-center">دسته تایر ورودی</th>
@@ -183,19 +261,27 @@ const ReceptoryRecordsTable = ({ onEdit }) => {
                       }
                     }}
                   >
-                    {/* Confirmation status indicator */}
-                    {(!receptoryRecord.receptory_confirmation ||
-                      receptoryRecord.receptory_confirmation === "no") && (
-                      <div className="absolute -top-0 -left-0 z-10">
-                        <div className="w-6 h-6 bg-[#83358F] rounded-full flex items-center justify-center border-2 border-gray-800 shadow-lg">
-                          <span className="text-gray-800 text-xs font-bold">
-                            !
-                          </span>
-                        </div>
-                      </div>
-                    )}
+                    <td className="p-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedEntries.includes(receptoryRecord.entry_code)}
+                        onChange={() => handleCheckboxChange(receptoryRecord.entry_code)}
+                        className="w-4 h-4 text-red-600 bg-gray-700 border-gray-600 rounded focus:ring-red-600 focus:ring-2"
+                      />
+                    </td>
 
-                    <td className="p-3 flex flex-col">
+                    <td className="relative p-3 flex flex-col">
+                      {/* Confirmation status indicator — wrapped inside TD */}
+                      {(!receptoryRecord.receptory_confirmation ||
+                        receptoryRecord.receptory_confirmation === "no") && (
+                        <div className="absolute -top-0 -left-0 z-10">
+                          <div className="w-6 h-6 bg-[#83358F] rounded-full flex items-center justify-center border-2 border-gray-800 shadow-lg">
+                            <span className="text-gray-800 text-xs font-bold">
+                              !
+                            </span>
+                          </div>
+                        </div>
+                      )}
                       <button
                         className="px-2 mb-1 sm:px-1 py-2.5 sm:py-3 border border-[#5271ff]/20 rounded-lg text-neutral-400 hover:text-white hover:border-[#5271ff] hover:shadow-[0_0_15px_rgba(82,113,255,0.3)] bg-blue-800 hover:bg-blue-900 edit transition-all duration-300 text-center text-sm sm:text-base"
                         onClick={() => onEdit(receptoryRecord)} // pass this prop from parent

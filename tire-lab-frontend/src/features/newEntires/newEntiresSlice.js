@@ -34,8 +34,15 @@ const newEntriesSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(addNewEntry.fulfilled, (state, action) => {
-        state.NewEntries.unshift(action.payload);
-        state.lastInsertedEntryCode = action.payload.entry_code;
+        // If action.payload is an array, it means multiple entries were added
+        const entries = Array.isArray(action.payload) ? action.payload : [action.payload];
+        state.NewEntries = [...state.NewEntries, ...entries].sort((a, b) => {
+          const numA = parseInt(a.entry_code.split('-')[1], 10);
+          const numB = parseInt(b.entry_code.split('-')[1], 10);
+          return numB - numA;
+        }).slice(0, 20);
+        // Store the last entry code from either single or multiple entries
+        state.lastInsertedEntryCode = entries[entries.length - 1].entry_code;
         state.loading = false;
       })
       .addCase(fetchNewEntries.fulfilled, (state, action) => {

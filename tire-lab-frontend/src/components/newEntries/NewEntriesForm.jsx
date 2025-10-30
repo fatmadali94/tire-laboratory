@@ -38,6 +38,7 @@ const initialForm = {
 const NewEntriesForm = () => {
   const [form, setForm] = useState(initialForm);
   const [displayEntryCode, setDisplayEntryCode] = useState(""); // For showing in input
+  const [displayEndEntryCode, setDisplayEndEntryCode] = useState(""); // For showing end entry code
   const [isDropdownOpen, setIsDropdownOpen] = useState(false); // For category dropdown
   const dispatch = useDispatch();
   const selected = useSelector((state) => state.newEntries.selectedNewEntry);
@@ -61,20 +62,27 @@ const NewEntriesForm = () => {
   const getNextEntryCodeNumber = () => {
     if (!newEntries || newEntries.length === 0) return 1;
 
-    // Filter entries that start with "1404-" and extract the numeric part
-    const currentYearEntries = newEntries
+    // Get all numbers including the ones in the form
+    const allNumbers = [...newEntries]
       .filter(
         (entry) => entry.entry_code && entry.entry_code.startsWith("1404-")
       )
       .map((entry) => {
         const numericPart = entry.entry_code.split("-")[1];
         return parseInt(numericPart) || 0;
-      })
+      });
+
+    // Also check the displayEndEntryCode if it exists
+    if (displayEndEntryCode) {
+      allNumbers.push(parseInt(displayEndEntryCode));
+    }
+
+    const filteredNumbers = allNumbers
       .filter((num) => !isNaN(num))
       .sort((a, b) => b - a); // Sort descending
 
-    if (currentYearEntries.length === 0) return 1;
-    return currentYearEntries[0] + 1;
+    if (filteredNumbers.length === 0) return 1;
+    return filteredNumbers[0] + 1;
   };
 
   // Function to format display value (without 1404 prefix)
@@ -148,6 +156,10 @@ const NewEntriesForm = () => {
 
       const fullCode = formatFullEntryCode(displayValue);
       setForm((prev) => ({ ...prev, entry_code: fullCode }));
+    } else if (name === "end_entry_code") {
+      const cleanValue = value.replace(/[^0-9.]/g, "");
+      const displayValue = cleanValue.replace(/^1404\-/, "");
+      setDisplayEndEntryCode(displayValue);
     } else if (name === "production_week_year") {
       setProductionWeekYearInput(value);
     } else if (name === "country") {
@@ -225,30 +237,56 @@ const NewEntriesForm = () => {
         await Promise.all(addIfNeeded);
       }
 
-      // Step 3: Prepare form data
-      const formDataWithUser = {
-        ...form,
-        number_of_rings:
-          form.number_of_rings === "" ? null : form.number_of_rings,
-        created_by: user?.id,
-        company_entry_date: convertJalaliToGregorian(form.company_entry_date),
-        depository_entry_date: convertJalaliToGregorian(
-          form.depository_entry_date
-        ),
-        production_week_year: form.production_week_year,
-      };
-
-      // Step 4: Save or update entry
-      if (selected) {
-        await dispatch(
-          updateNewEntry({
-            entry_code: selected.entry_code,
-            newEntry: formDataWithUser,
-          })
-        ).unwrap();
-        dispatch(fetchNewEntries());
+      // Step 3: Handle multiple entries if end entry code is provided
+      if (displayEndEntryCode && !selected) {
+        const startNum = parseInt(displayEntryCode);
+        const endNum = parseInt(displayEndEntryCode);
+        
+        if (!isNaN(startNum) && !isNaN(endNum) && startNum <= endNum) {
+          const entriesPromises = [];
+          
+          for (let i = startNum; i <= endNum; i++) {
+            const formDataWithUser = {
+              ...form,
+              entry_code: `1404-${i}`,
+              number_of_rings: form.number_of_rings === "" ? null : form.number_of_rings,
+              created_by: user?.id,
+              company_entry_date: convertJalaliToGregorian(form.company_entry_date),
+              depository_entry_date: convertJalaliToGregorian(form.depository_entry_date),
+              production_week_year: form.production_week_year,
+            };
+            entriesPromises.push(dispatch(addNewEntry(formDataWithUser)).unwrap());
+          }
+          
+          const results = await Promise.all(entriesPromises);
+          // After all entries are added, update with the last entry code
+          const lastEntry = results[results.length - 1];
+          if (lastEntry) {
+            setDisplayEntryCode(lastEntry.entry_code.split('-')[1]);
+          }
+        }
       } else {
-        await dispatch(addNewEntry(formDataWithUser)).unwrap();
+        // Handle single entry
+        const formDataWithUser = {
+          ...form,
+          number_of_rings: form.number_of_rings === "" ? null : form.number_of_rings,
+          created_by: user?.id,
+          company_entry_date: convertJalaliToGregorian(form.company_entry_date),
+          depository_entry_date: convertJalaliToGregorian(form.depository_entry_date),
+          production_week_year: form.production_week_year,
+        };
+
+        if (selected) {
+          await dispatch(
+            updateNewEntry({
+              entry_code: selected.entry_code,
+              newEntry: formDataWithUser,
+            })
+          ).unwrap();
+          dispatch(fetchNewEntries());
+        } else {
+          await dispatch(addNewEntry(formDataWithUser)).unwrap();
+        }
       }
 
       // ✅ Clear all dropdown lists after submit
@@ -259,6 +297,7 @@ const NewEntriesForm = () => {
       // Step 5: Reset form
       setForm(initialForm);
       setDisplayEntryCode("");
+      setDisplayEndEntryCode("");
       dispatch(clearSelectedNewEntry());
 
       if (!selected) {
@@ -280,38 +319,80 @@ const NewEntriesForm = () => {
       </h2>
       <div className="flex justify-center flex-wrap gap-4 mt-5">
         <div className="relative m-1">
-          {/* 1404- prefix display */}
-          <span className="absolute left-0 top-0 z-10 text-neutral-400 text-xs sm:text-sm bg-neutral-800 border border-[#5271ff]/20 rounded-r px-2 h-20 flex items-center border-l-0">
-            1404-
-          </span>
-          <input
-            type="text"
-            name="entry_code"
-            id="entry_code"
-            value={displayEntryCode}
-            onChange={handleChange}
-            className="peer w-50 h-20 p-2 pl-16 bg-neutral-900 border border-[#5271ff]/20 rounded text-xs sm:text-sm text-neutral-200 placeholder-transparent focus:outline-none focus:border-[#5271ff] focus:ring-1 focus:ring-[#5271ff]"
-            placeholder=""
-            inputMode="numeric"
-          />
-          <label
-            htmlFor="entry_code"
-            className={`absolute right-2 rounded-md bg-neutral-900 px-1 text-xs sm:text-sm text-neutral-400 transition-all
-              ${
-                displayEntryCode
-                  ? "top-0 text-xs text-[#5271ff]"
-                  : "top-1/2 -translate-y-1/2 peer-placeholder-shown:text-neutral-300 peer-placeholder-shown:text-sm peer-placeholder-shown:top-1/2"
-              }
-              peer-focus:top-0 peer-focus:text-xs peer-focus:text-[#5271ff]`}
-          >
-            کد ردیابی
-          </label>
-          {/* Show full code preview */}
-          {displayEntryCode && (
-            <div className="absolute top-full mt-1 text-xs text-neutral-500 text-right right-0">
-              {form.entry_code} :کد کامل
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              {/* 1404- prefix display for start entry */}
+              <span className="absolute left-0 top-0 z-10 text-neutral-400 text-xs sm:text-sm bg-neutral-800 border border-[#5271ff]/20 rounded-r px-2 h-20 flex items-center border-l-0">
+                1404-
+              </span>
+              <input
+                type="text"
+                name="entry_code"
+                id="entry_code"
+                value={displayEntryCode}
+                onChange={handleChange}
+                className="peer w-50 h-20 p-2 pl-16 bg-neutral-900 border border-[#5271ff]/20 rounded text-xs sm:text-sm text-neutral-200 placeholder-transparent focus:outline-none focus:border-[#5271ff] focus:ring-1 focus:ring-[#5271ff]"
+                placeholder=""
+                inputMode="numeric"
+              />
+              <label
+                htmlFor="entry_code"
+                className={`absolute right-2 rounded-md bg-neutral-900 px-1 text-xs sm:text-sm text-neutral-400 transition-all
+                  ${
+                    displayEntryCode
+                      ? "top-0 text-xs text-[#5271ff]"
+                      : "top-1/2 -translate-y-1/2 peer-placeholder-shown:text-neutral-300 peer-placeholder-shown:text-sm peer-placeholder-shown:top-1/2"
+                  }
+                  peer-focus:top-0 peer-focus:text-xs peer-focus:text-[#5271ff]`}
+              >
+                کد شروع
+              </label>
+              {/* Show full code preview for start entry */}
+              {displayEntryCode && (
+                <div className="absolute top-full mt-1 text-xs text-neutral-500 text-right right-0">
+                  {form.entry_code} :کد کامل
+                </div>
+              )}
             </div>
-          )}
+
+            <span className="text-neutral-400">تا</span>
+
+            <div className="relative">
+              {/* 1404- prefix display for end entry */}
+              <span className="absolute left-0 top-0 z-10 text-neutral-400 text-xs sm:text-sm bg-neutral-800 border border-[#5271ff]/20 rounded-r px-2 h-20 flex items-center border-l-0">
+                1404-
+              </span>
+              <input
+                type="text"
+                name="end_entry_code"
+                id="end_entry_code"
+                value={displayEndEntryCode}
+                onChange={handleChange}
+                className="peer w-50 h-20 p-2 pl-16 bg-neutral-900 border border-[#5271ff]/20 rounded text-xs sm:text-sm text-neutral-200 placeholder-transparent focus:outline-none focus:border-[#5271ff] focus:ring-1 focus:ring-[#5271ff]"
+                placeholder=""
+                inputMode="numeric"
+                disabled={selected} // Disable when editing existing entry
+              />
+              <label
+                htmlFor="end_entry_code"
+                className={`absolute right-2 rounded-md bg-neutral-900 px-1 text-xs sm:text-sm text-neutral-400 transition-all
+                  ${
+                    displayEndEntryCode
+                      ? "top-0 text-xs text-[#5271ff]"
+                      : "top-1/2 -translate-y-1/2 peer-placeholder-shown:text-neutral-300 peer-placeholder-shown:text-sm peer-placeholder-shown:top-1/2"
+                  }
+                  peer-focus:top-0 peer-focus:text-xs peer-focus:text-[#5271ff]`}
+              >
+                کد پایان
+              </label>
+              {/* Show full code preview for end entry */}
+              {displayEndEntryCode && (
+                <div className="absolute top-full mt-1 text-xs text-neutral-500 text-right right-0">
+                  {`1404-${displayEndEntryCode}`} :کد کامل
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
       <div className="flex justify-center flex-wrap gap-4 mt-5">

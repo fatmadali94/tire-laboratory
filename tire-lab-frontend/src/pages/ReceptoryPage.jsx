@@ -84,7 +84,7 @@ const ReceptoryPage = () => {
         </div>
 
         {/* ✅ Show form only when a record is selected */}
-        {selected && <ReceptoryRecordsForm onCancel={handleCancel} />}
+  {selected && <ReceptoryRecordsForm onClose={handleCancel} />}
 
         <ReceptoryRecordsTable onEdit={handleEdit} />
       </div>

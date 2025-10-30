@@ -21,7 +21,7 @@ const initialForm = {
   receptory_confirmation: "",
 };
 
-const ReceptoryRecordsForm = ({ onCancel }) => {
+const ReceptoryRecordsForm = ({ onClose }) => {
   const [form, setForm] = useState(initialForm);
   const dispatch = useDispatch();
   const selected = useSelector(
@@ -544,7 +544,7 @@ const ReceptoryRecordsForm = ({ onCancel }) => {
 
         <button
           type="button"
-          onClick={onCancel} // receives from parent
+          onClick={onClose} // receives from parent
           className="w-1/4 px-3 sm:px-4 py-2.5 sm:py-3 bg-neutral-700 border border-[#5271ff]/20 rounded-lg text-neutral-400 hover:text-white hover:border-neutral-500 hover:shadow-[0_0_15px_rgba(82,113,255,0.3)] transition-all duration-300 text-center text-sm sm:text-base shadow-[inset_0_0_4px_rgba(168,85,247,0.3)]"
         >
           کنسل

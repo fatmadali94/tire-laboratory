@@ -68,7 +68,7 @@ const DepositoryPage = () => {
         />
 
         {/* ✅ Show form only when a record is selected */}
-        {selected && <DepositoryRecordsForm onCancel={handleCancel} />}
+  {selected && <DepositoryRecordsForm onClose={handleCancel} />}
 
         <DepositoryRecordsTable onEdit={handleEdit} />
       </div>
